@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>STEP Viewer - Демонстрация в статье</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html, body {
+      width: 100%;
+      min-height: 100%;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background-color: #ffffff;
+      color: #333333;
+    }
+
+    /* Шапка сайта */
+    .site-header {
+      background-color: #1e1e1e;
+      color: #e0e0e0;
+      padding: 20px 40px;
+      border-bottom: 1px solid #333;
+    }
+
+    .site-header h1 {
+      font-size: 24px;
+      font-weight: 500;
+    }
+
+    /* Контейнер статьи */
+    .article-container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 40px 20px;
+    }
+
+    .article-container h2 {
+      font-size: 28px;
+      margin-bottom: 20px;
+      color: #1e1e1e;
+    }
+
+    .article-container h3 {
+      font-size: 20px;
+      margin: 30px 0 15px 0;
+      color: #2d2d2d;
+    }
+
+    .article-container p {
+      font-size: 16px;
+      line-height: 1.7;
+      margin-bottom: 20px;
+      color: #444;
+    }
+
+    .article-container .intro {
+      font-size: 18px;
+      color: #555;
+      font-style: italic;
+      border-left: 3px solid #4a9eff;
+      padding-left: 15px;
+      margin-bottom: 30px;
+    }
+
+    /* Контейнер для вьюера в статье */
+    .viewer-wrapper {
+      margin: 30px 0;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .viewer-wrapper .viewer-caption {
+      background-color: #f5f5f5;
+      padding: 10px 15px;
+      font-size: 14px;
+      color: #666;
+      border-bottom: 1px solid #ddd;
+    }
+
+    /* Вьюер в контексте статьи */
+    .step-viewer {
+      width: 100%;
+      height: 500px;
+      position: relative;
+      background-color: #1e1e1e;
+    }
+
+    .step-viewer .viewer-container {
+      width: 100%;
+      height: 100%;
+    }
+
+    .step-viewer .ui-container {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+    }
+
+    .step-viewer .ui-container > * {
+      pointer-events: auto;
+    }
+
+    .step-viewer .loading-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(30, 30, 30, 0.85);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+      z-index: 2000;
+      color: #e0e0e0;
+    }
+
+    .step-viewer .loading-overlay.active {
+      display: flex;
+    }
+
+    .step-viewer .spinner {
+      width: 60px;
+      height: 60px;
+      border: 4px solid #444;
+      border-top: 4px solid #4a9eff;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-bottom: 20px;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .step-viewer .loading-text {
+      font-size: 16px;
+      color: #e0e0e0;
+      margin-bottom: 10px;
+    }
+
+    .step-viewer .loading-progress {
+      font-size: 14px;
+      color: #a0a0a0;
+    }
+
+    /* Подвал сайта */
+    .site-footer {
+      background-color: #1e1e1e;
+      color: #a0a0a0;
+      padding: 20px 40px;
+      text-align: center;
+      font-size: 14px;
+      margin-top: 60px;
+    }
+  </style>
+</head>
+<body>
+  <header class="site-header">
+    <h1>Технический каталог оборудования</h1>
+  </header>
+
+  <main class="article-container">
+    <h2>Обзор клапанов серии KVNG и BVCC</h2>
+
+    <p class="intro">
+      В данной статье представлены технические характеристики и 3D-модели
+      промышленных клапанов. Вы можете интерактивно рассмотреть каждую модель
+      непосредственно в тексте статьи.
+    </p>
+
+    <h3>1. Клапан KVNG-32</h3>
+    <p>
+      Клапан KVNG-32 предназначен для использования в системах с рабочим давлением
+      до 32 МПа. Конструкция обеспечивает надежное уплотнение и длительный срок
+      службы при интенсивной эксплуатации. Ниже представлена интерактивная 3D-модель
+      данного изделия.
+    </p>
+
+    <div class="viewer-wrapper">
+      <div class="viewer-caption">Рисунок 1 — 3D-модель клапана KVNG-32 (автоматическая загрузка)</div>
+      <div class="step-viewer"
+           data-model-url="/models/KVNG-32.stp"
+           data-auto-load="true"
+           id="viewer-1">
+        <div class="viewer-container"></div>
+        <div class="ui-container">
+          <div class="loading-overlay">
+            <div class="spinner"></div>
+            <div class="loading-text">Загрузка модели...</div>
+            <div class="loading-progress">Пожалуйста, подождите</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <p>
+      Основные преимущества модели KVNG-32 включают коррозионную стойкость,
+      возможность работы в широком диапазоне температур и простоту обслуживания.
+      Все критические узлы выполнены из высококачественных сплавов.
+    </p>
+
+    <h3>2. Клапан BVCC G04-G04</h3>
+    <p>
+      Клапан BVCC G04-G04 представляет собой современное решение для систем
+      с высокими требованиями к герметичности. Модель отличается улучшенной
+      конструкцией седла и возможностью точной регулировки расхода.
+    </p>
+
+    <div class="viewer-wrapper">
+      <div class="viewer-caption">Рисунок 2 — 3D-модель клапана BVCC G04-G04 (автоматическая загрузка)</div>
+      <div class="step-viewer"
+           data-model-url="/models/BVCC G04-G04.stp"
+           data-auto-load="true"
+           id="viewer-2">
+        <div class="viewer-container"></div>
+        <div class="ui-container">
+          <div class="loading-overlay">
+            <div class="spinner"></div>
+            <div class="loading-text">Загрузка модели...</div>
+            <div class="loading-progress">Пожалуйста, подождите</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <p>
+      Клапан BVCC G04-G04 рекомендуется для применения в химической и
+      нефтегазовой промышленности, где требуется высокая надежность и
+      устойчивость к агрессивным средам.
+    </p>
+
+    <h3>Заключение</h3>
+    <p>
+      Представленные модели демонстрируют возможности интерактивного просмотра
+      STEP-файлов непосредственно в контексте технической документации.
+      Каждый вьюер работает независимо и поддерживает вращение, масштабирование
+      и панорамирование модели.
+    </p>
+  </main>
+
+  <footer class="site-footer">
+    STEP Viewer — демонстрация интеграции в контент сайта
+  </footer>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
