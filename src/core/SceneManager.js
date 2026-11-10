@@ -40,17 +40,19 @@ export class SceneManager {
   }
 
   /**
-   * Создает WebGL рендерер
+   * Создает WebGL рендерер с поддержкой clipping planes и stencil
    */
   createRenderer() {
     this.renderer = new THREE.WebGLRenderer({
       antialias: true,
-      alpha: true
+      alpha: true,
+      stencil: true
     });
     this.renderer.setSize(this.container.clientWidth, this.container.clientHeight);
     this.renderer.setPixelRatio(window.devicePixelRatio);
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.renderer.localClippingEnabled = true;
 
     this.container.appendChild(this.renderer.domElement);
   }
@@ -170,5 +172,29 @@ export class SceneManager {
    */
   getRenderer() {
     return this.renderer;
+  }
+
+
+
+  /**
+   * Устанавливает толщину контуров
+   * @param {number} thickness - толщина от 0.001 до 0.01
+   */
+  setOutlineThickness(thickness) {
+    this.outlineThickness = Math.max(0.001, Math.min(0.01, thickness));
+    if (this.effect) {
+      this.effect.defaultThickness = this.outlineThickness;
+    }
+  }
+
+  /**
+   * Устанавливает цвет контуров
+   * @param {Array} color - массив [r, g, b] от 0 до 1
+   */
+  setOutlineColor(color) {
+    this.outlineColor = color;
+    if (this.effect) {
+      this.effect.defaultColor = this.outlineColor;
+    }
   }
 }

@@ -94,7 +94,15 @@ export class StepLoader {
     this.isLoading = true;
 
     try {
-      const result = this.occtModule.ReadStepFile(new Uint8Array(arrayBuffer));
+      // Параметры для качественной триангуляции (гладкие поверхности)
+      const triangulationParams = {
+        linearUnit: 'millimeter',
+        linearDeflectionType: 'bounding_box_ratio',
+        linearDeflection: 0.005, // Оптимальный баланс: достаточно гладко, но не перегружает память
+        angularDeflection: 0.2
+      };
+
+      const result = this.occtModule.ReadStepFile(new Uint8Array(arrayBuffer), triangulationParams);
 
       if (!result || !result.meshes || result.meshes.length === 0) {
         throw new Error('No geometry found in STEP file');
@@ -111,7 +119,7 @@ export class StepLoader {
   }
 
   /**
-   * Создает Three.js модель из массива мешей с наложением сетки
+   * Создает Three.js модель из массива мешей с НАСТОЯЩИМИ CAD-контурами
    * @param {Array} meshes - массив мешей из occt-import-js
    * @returns {THREE.Group} группа с Three.js объектами
    */
@@ -124,13 +132,21 @@ export class StepLoader {
       const threeMesh = new THREE.Mesh(geometry, material);
       threeMesh.name = `mesh_${index}`;
 
-      const edges = new THREE.EdgesGeometry(geometry);
+      // КЛЮЧЕВОЕ ИЗМЕНЕНИЕ: thresholdAngle = 15 (градусов)
+      // Это заставляет Three.js рисовать линии ТОЛЬКО на острых углах и границах,
+      // полностью игнорируя мелкую внутреннюю сетку триангуляции.
+      const edges = new THREE.EdgesGeometry(geometry, 15);
+
       const lineMaterial = new THREE.LineBasicMaterial({
-        color: 0x000000,
+        color: 0x000000, // Черный цвет, как в классических CAD-системах
         transparent: true,
-        opacity: 0.4
+        opacity: 0.9     // Высокая непрозрачность для четкости
       });
+
       const wireframe = new THREE.LineSegments(edges, lineMaterial);
+
+      // Гарантируем, что линии рендерятся поверх полигонов модели
+      wireframe.renderOrder = 1;
       threeMesh.add(wireframe);
 
       group.add(threeMesh);

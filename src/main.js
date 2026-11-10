@@ -70,7 +70,8 @@ class App {
   createModeSwitcher() {
     const modes = [
       { id: 'view', label: 'Просмотр' },
-      { id: 'dimensions', label: 'Размеры' }
+      { id: 'dimensions', label: 'Размеры' },
+      { id: 'slice', label: 'Разрез' }
     ];
 
     this.modeSwitcher = new ModeSwitcher(this.uiContainer, (modeId) => {

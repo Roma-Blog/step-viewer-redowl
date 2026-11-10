@@ -11,7 +11,7 @@ export class ViewModule extends BaseModule {
    */
   constructor(viewer) {
     super(viewer);
-    this.showWireframe = false;
+    this.showWireframe = true; // Сетка включена по умолчанию
     this.uiPanel = null;
     this.wireframeCheckbox = null;
     this.panelHeader = null;
@@ -38,12 +38,12 @@ export class ViewModule extends BaseModule {
   }
 
   /**
-   * Сбрасывает состояние модуля
+   * Сбрасывает состояние модуля (восстанавливает сетку по умолчанию)
    */
   reset() {
-    this.showWireframe = false;
+    this.showWireframe = true;
     if (this.wireframeCheckbox) {
-      this.wireframeCheckbox.checked = false;
+      this.wireframeCheckbox.checked = true;
     }
     this.updateWireframeVisibility();
   }
@@ -115,6 +115,7 @@ export class ViewModule extends BaseModule {
       overflow: hidden;
     `;
 
+    // --- ЕДИНСТВЕННЫЙ ЧЕКБОКС: Сетка ---
     const wireframeLabel = document.createElement('label');
     wireframeLabel.style.cssText = `
       display: flex;
@@ -141,7 +142,7 @@ export class ViewModule extends BaseModule {
       cursor: pointer;
       accent-color: #4a9eff;
     `;
-    wireframeCheckbox.checked = this.showWireframe;
+    wireframeCheckbox.checked = this.showWireframe; // Включен по умолчанию
 
     const wireframeText = document.createElement('span');
     wireframeText.textContent = 'Показать сетку';

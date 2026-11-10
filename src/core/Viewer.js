@@ -4,6 +4,7 @@ import { ControlsManager } from './ControlsManager.js';
 import { StepLoader } from './StepLoader.js';
 import { ViewModule } from '../modules/ViewModule.js';
 import { DimensionsModule } from '../modules/DimensionsModule.js';
+import { SliceModule } from '../modules/SliceModule.js';
 import * as THREE from 'three';
 
 /**
@@ -78,6 +79,7 @@ export class Viewer {
   initModules() {
     this.modules.view = new ViewModule(this);
     this.modules.dimensions = new DimensionsModule(this);
+    this.modules.slice = new SliceModule(this);
     this.setActiveModule('view');
   }
 
