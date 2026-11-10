@@ -3,14 +3,14 @@ import * as THREE from 'three';
 
 /**
  * Модуль слайсирования модели с использованием Stencil Buffer
- * Обеспечивает идеальное заполнение среза без z-fighting (мерцания),
- * точно как в официальном примере three.js webgl_clipping_stencil
+ * Обеспечивает идеальное заполнение среза без z-fighting и рисует контур сечения
  */
 export class SliceModule extends BaseModule {
   constructor(viewer) {
     super(viewer);
     this.clippingPlane = null;
     this.slicePlaneMesh = null;
+    this.sliceContourLines = null; // Линии контура сечения
     this.stencilGroup = null;
     this.currentAxis = 'x';
     this.slicePercent = 50;
@@ -178,7 +178,7 @@ export class SliceModule extends BaseModule {
     super.activate();
     if (this.uiPanel) this.uiPanel.style.display = 'block';
     this.applyClippingToModel();
-    this.createStencilGroup(); // Создаем группу для трафарета
+    this.createStencilGroup();
     this.updateClippingPlane();
   }
 
@@ -206,14 +206,17 @@ export class SliceModule extends BaseModule {
     if (!model) return;
 
     model.traverse((child) => {
-      if (child.isMesh && child.material) {
+      // Применяем ко всем объектам с материалом (включая LineSegments для контуров)
+      if (child.material) {
         if (!this.originalMaterials.has(child.uuid)) {
           this.originalMaterials.set(child.uuid, child.material);
         }
         const material = child.material.clone();
         material.clippingPlanes = [this.clippingPlane];
-        material.clipShadows = true;
-        material.side = THREE.DoubleSide;
+        if (child.isMesh) {
+          material.clipShadows = true;
+          material.side = THREE.DoubleSide;
+        }
         child.material = material;
       }
     });
@@ -224,21 +227,16 @@ export class SliceModule extends BaseModule {
     if (!model) return;
 
     model.traverse((child) => {
-      if (child.isMesh && this.originalMaterials.has(child.uuid)) {
+      if (child.material && this.originalMaterials.has(child.uuid)) {
         child.material = this.originalMaterials.get(child.uuid);
       }
     });
     this.originalMaterials.clear();
   }
 
-  /**
-   * Создает невидимую группу мешей для заполнения буфера трафарета (Stencil Buffer)
-   * Точная реализация логики из примера webgl_clipping_stencil
-   */
   createStencilGroup() {
     this.removeStencilGroup();
     this.stencilGroup = new THREE.Group();
-
     const model = this.viewer.sceneManager.model;
     if (!model) return;
 
@@ -253,7 +251,6 @@ export class SliceModule extends BaseModule {
 
     model.traverse((child) => {
       if (child.isMesh && child.geometry) {
-        // Back faces (увеличивают трафарет)
         const mat0 = baseMat.clone();
         mat0.side = THREE.BackSide;
         mat0.stencilFail = THREE.IncrementWrapStencilOp;
@@ -263,7 +260,6 @@ export class SliceModule extends BaseModule {
         mesh0.renderOrder = 1;
         this.stencilGroup.add(mesh0);
 
-        // Front faces (уменьшают трафарет)
         const mat1 = baseMat.clone();
         mat1.side = THREE.FrontSide;
         mat1.stencilFail = THREE.DecrementWrapStencilOp;
@@ -317,7 +313,6 @@ export class SliceModule extends BaseModule {
     this.clippingPlane.normal.copy(normal);
     this.clippingPlane.constant = position;
 
-    // Обновляем clippingPlanes в материалах трафарета
     if (this.stencilGroup) {
       this.stencilGroup.traverse((child) => {
         if (child.material && child.material.clippingPlanes) {
@@ -336,19 +331,119 @@ export class SliceModule extends BaseModule {
       this.slicePlaneMesh.material.dispose();
       this.slicePlaneMesh = null;
     }
+    if (this.sliceContourLines) {
+      this.viewer.sceneManager.getScene().remove(this.sliceContourLines);
+      this.sliceContourLines.geometry.dispose();
+      this.sliceContourLines.material.dispose();
+      this.sliceContourLines = null;
+    }
   }
 
   /**
-   * Обновляет визуализацию крышки с использованием Stencil Buffer
-   * Крышка рисуется ТОЛЬКО там, где трафарет != 0, что гарантирует отсутствие мерцания
+   * Вычисляет и рисует контур сечения модели на плоскости среза
+   * Исправлено: точки теперь группируются попарно для каждого треугольника,
+   * что исключает появление случайных "лишних" линий.
    */
+  updateSliceContour(boundingBox, position) {
+    if (this.sliceContourLines) {
+      this.viewer.sceneManager.getScene().remove(this.sliceContourLines);
+      this.sliceContourLines.geometry.dispose();
+      this.sliceContourLines.material.dispose();
+      this.sliceContourLines = null;
+    }
+
+    const model = this.viewer.sceneManager.model;
+    if (!model) return;
+
+    const points = [];
+    const plane = this.clippingPlane;
+    const eps = 1e-5; // Допуск для борьбы с ошибками плавающей запятой
+
+    // Вспомогательная функция для расчета точки пересечения
+    const getIntersection = (v1, v2, d1, d2) => {
+      const t = d1 / (d1 - d2);
+      return new THREE.Vector3().lerpVectors(v1, v2, t);
+    };
+
+    model.traverse((child) => {
+      if (child.isMesh && child.geometry) {
+        const geometry = child.geometry;
+        const positionAttr = geometry.attributes.position;
+        const indexAttr = geometry.index;
+
+        // Функция обработки одного треугольника
+        const processTriangle = (a, b, c) => {
+          const v1 = new THREE.Vector3().fromBufferAttribute(positionAttr, a).applyMatrix4(child.matrixWorld);
+          const v2 = new THREE.Vector3().fromBufferAttribute(positionAttr, b).applyMatrix4(child.matrixWorld);
+          const v3 = new THREE.Vector3().fromBufferAttribute(positionAttr, c).applyMatrix4(child.matrixWorld);
+
+          const d1 = plane.distanceToPoint(v1);
+          const d2 = plane.distanceToPoint(v2);
+          const d3 = plane.distanceToPoint(v3);
+
+          // Проверяем, пересекает ли плоскость ребра треугольника (с учетом допуска eps)
+          const cuts12 = (d1 > eps && d2 < -eps) || (d1 < -eps && d2 > eps);
+          const cuts23 = (d2 > eps && d3 < -eps) || (d2 < -eps && d3 > eps);
+          const cuts31 = (d3 > eps && d1 < -eps) || (d3 < -eps && d1 > eps);
+
+          let pA = null, pB = null;
+
+          // Плоскость может пересекать треугольник только по двум ребрам
+          if (cuts12 && cuts23) {
+            pA = getIntersection(v1, v2, d1, d2);
+            pB = getIntersection(v2, v3, d2, d3);
+          } else if (cuts23 && cuts31) {
+            pA = getIntersection(v2, v3, d2, d3);
+            pB = getIntersection(v3, v1, d3, d1);
+          } else if (cuts31 && cuts12) {
+            pA = getIntersection(v3, v1, d3, d1);
+            pB = getIntersection(v1, v2, d1, d2);
+          }
+
+          // Если нашли два пересечения, добавляем их как ПАРУ точек для LineSegments
+          if (pA && pB) {
+            points.push(pA.x, pA.y, pA.z, pB.x, pB.y, pB.z);
+          }
+        };
+
+        if (indexAttr) {
+          // Обработка индексированной геометрии (стандарт для occt-import-js)
+          for (let i = 0; i < indexAttr.count; i += 3) {
+            processTriangle(indexAttr.getX(i), indexAttr.getX(i + 1), indexAttr.getX(i + 2));
+          }
+        } else {
+          // Обработка неиндексированной геометрии
+          for (let i = 0; i < positionAttr.count; i += 3) {
+            processTriangle(i, i + 1, i + 2);
+          }
+        }
+      }
+    });
+
+    // Если нашли точки пересечения, рисуем линии
+    if (points.length > 0) {
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute('position', new THREE.Float32BufferAttribute(points, 3));
+
+      const material = new THREE.LineBasicMaterial({
+        color: 0x000000,
+        linewidth: 2
+      });
+
+      this.sliceContourLines = new THREE.LineSegments(geometry, material);
+      this.sliceContourLines.renderOrder = 2; // Рисуем поверх крышки
+
+      this.viewer.sceneManager.getScene().add(this.sliceContourLines);
+    }
+  }
+
   updateSlicePlaneVisualization(boundingBox, position) {
     this.removeSlicePlaneVisualization();
 
     const min = boundingBox.min;
     const size = boundingBox.getSize(new THREE.Vector3());
     const maxDim = Math.max(size.x, size.y, size.z);
-    const planeSize = maxDim * 2; // Плоскость заведомо больше модели
+    const planeSize = maxDim * 2;
 
     let geometry;
     const meshPosition = new THREE.Vector3();
@@ -372,7 +467,6 @@ export class SliceModule extends BaseModule {
         break;
     }
 
-    // Материал крышки, который рендерится ТОЛЬКО там, где трафарет не равен 0
     const material = new THREE.MeshStandardMaterial({
       color: 0xaaaaaa,
       roughness: 0.6,
@@ -380,29 +474,29 @@ export class SliceModule extends BaseModule {
       side: THREE.DoubleSide,
       stencilWrite: true,
       stencilRef: 0,
-      stencilFunc: THREE.NotEqualStencilFunc, // КЛЮЧЕВОЙ ПАРАМЕТР
+      stencilFunc: THREE.NotEqualStencilFunc,
       stencilFail: THREE.ReplaceStencilOp,
       stencilZFail: THREE.ReplaceStencilOp,
       stencilZPass: THREE.ReplaceStencilOp
-      // clipIntersection и polygonOffset больше не нужны!
     });
 
     this.slicePlaneMesh = new THREE.Mesh(geometry, material);
     this.slicePlaneMesh.position.copy(meshPosition);
     this.slicePlaneMesh.rotation.copy(rotation);
-    this.slicePlaneMesh.renderOrder = 1.1; // Рендерим ПОСЛЕ трафарета (1), но ДО основной модели (по умолчанию 0, но модель обрезана)
+    this.slicePlaneMesh.renderOrder = 1.1;
 
-    // Очищаем трафарет после отрисовки крышки, чтобы не влиять на другие объекты
     this.slicePlaneMesh.onAfterRender = (renderer) => {
       renderer.clearStencil();
     };
 
-    // Границы крышки
     const edges = new THREE.EdgesGeometry(geometry);
     const lineMaterial = new THREE.LineBasicMaterial({ color: 0x4a9eff, linewidth: 2 });
     const wireframe = new THREE.LineSegments(edges, lineMaterial);
     this.slicePlaneMesh.add(wireframe);
 
     this.viewer.sceneManager.getScene().add(this.slicePlaneMesh);
+
+    // Рисуем контур сечения
+    this.updateSliceContour(boundingBox, position);
   }
 }
