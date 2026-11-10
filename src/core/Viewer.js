@@ -3,6 +3,7 @@ import { CameraManager } from './CameraManager.js';
 import { ControlsManager } from './ControlsManager.js';
 import { StepLoader } from './StepLoader.js';
 import { ViewModule } from '../modules/ViewModule.js';
+import { DimensionsModule } from '../modules/DimensionsModule.js';
 import * as THREE from 'three';
 
 /**
@@ -13,9 +14,11 @@ export class Viewer {
   /**
    * Создает экземпляр Viewer
    * @param {HTMLElement} container - DOM элемент для рендеринга
+   * @param {HTMLElement} uiContainer - DOM элемент для интерфейса
    */
-  constructor(container) {
+  constructor(container, uiContainer) {
     this.container = container;
+    this.uiContainer = uiContainer;
     this.sceneManager = null;
     this.cameraManager = null;
     this.controlsManager = null;
@@ -74,6 +77,7 @@ export class Viewer {
    */
   initModules() {
     this.modules.view = new ViewModule(this);
+    this.modules.dimensions = new DimensionsModule(this);
     this.setActiveModule('view');
   }
 
@@ -196,6 +200,9 @@ export class Viewer {
 
     this.animationFrameId = requestAnimationFrame(() => this.animate());
     this.controlsManager.update();
+    if (this.activeModule) {
+      this.activeModule.update();
+    }
     this.sceneManager.render(this.cameraManager.getCamera());
   }
 

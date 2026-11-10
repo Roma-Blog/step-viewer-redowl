@@ -1,4 +1,5 @@
 import { Viewer } from './core/Viewer.js';
+import { ModeSwitcher } from './ui/ModeSwitcher.js';
 
 /**
  * Точка входа приложения STEP Viewer
@@ -27,9 +28,8 @@ class App {
     this.viewer = null;
     this.fileInput = null;
     this.fileInputInfo = null;
-    this.wireframeCheckbox = null;
-    this.wireframeLabel = null;
     this.isAutoLoadMode = false;
+    this.modeSwitcher = null;
 
     this.modelUrl = viewerElement.dataset.modelUrl || '';
     this.autoLoad = viewerElement.dataset.autoLoad === 'true';
@@ -43,10 +43,10 @@ class App {
     console.log(`[DEBUG] Initializing viewer: ${this.viewerId}`);
 
     try {
-      this.viewer = new Viewer(this.viewerContainer);
+      this.viewer = new Viewer(this.viewerContainer, this.uiContainer);
       this.createFileLoaderUI();
+      this.createModeSwitcher();
       this.setupEventListeners();
-      this.hideModuleUI();
 
       await this.viewer.waitForReady();
       console.log(`[DEBUG] Viewer ${this.viewerId} is ready`);
@@ -62,6 +62,32 @@ class App {
     } catch (error) {
       console.error(`[DEBUG] Failed to initialize viewer ${this.viewerId}:`, error);
     }
+  }
+
+  /**
+   * Создает переключатель режимов
+   */
+  createModeSwitcher() {
+    const modes = [
+      { id: 'view', label: 'Просмотр' },
+      { id: 'dimensions', label: 'Размеры' }
+    ];
+
+    this.modeSwitcher = new ModeSwitcher(this.uiContainer, (modeId) => {
+      this.onModeChange(modeId);
+    });
+
+    this.modeSwitcher.init(modes);
+    this.modeSwitcher.setActiveMode('view');
+  }
+
+  /**
+   * Обработчик изменения режима
+   * @param {string} modeId - идентификатор нового режима
+   */
+  onModeChange(modeId) {
+    console.log(`[DEBUG] Mode changed to: ${modeId}`);
+    this.viewer.setActiveModule(modeId);
   }
 
   /**
@@ -114,7 +140,7 @@ class App {
   }
 
   /**
-   * Создает UI для загрузки файлов и управления сеткой
+   * Создает UI для загрузки файлов
    */
   createFileLoaderUI() {
     const loaderDiv = document.createElement('div');
@@ -134,7 +160,7 @@ class App {
 
     const title = document.createElement('h3');
     title.textContent = 'STEP Viewer';
-    title.style.cssText = 'margin: 0 0 10px 0; font-size: 16px; font-weight: 500;color:#fff';
+    title.style.cssText = 'margin: 0; font-size: 14px; font-weight: 700;color:#fff';
 
     const fileInput = document.createElement('input');
     fileInput.type = 'file';
@@ -146,78 +172,24 @@ class App {
     info.style.cssText = 'margin: 0 0 15px 0; font-size: 12px; color: #a0a0a0;';
     this.fileInputInfo = info;
 
-    const wireframeLabel = document.createElement('label');
-    wireframeLabel.style.cssText = `
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      cursor: pointer;
-      font-size: 14px;
-      padding: 8px;
-      border-radius: 4px;
-      transition: background 0.2s;
-      display: none;
-    `;
-    wireframeLabel.addEventListener('mouseenter', () => {
-      wireframeLabel.style.background = '#3d3d3d';
-    });
-    wireframeLabel.addEventListener('mouseleave', () => {
-      wireframeLabel.style.background = 'transparent';
-    });
-
-    const wireframeCheckbox = document.createElement('input');
-    wireframeCheckbox.type = 'checkbox';
-    wireframeCheckbox.id = `wireframe-toggle-${this.viewerId}`;
-    wireframeCheckbox.style.cssText = `
-      width: 16px;
-      height: 16px;
-      cursor: pointer;
-      accent-color: #4a9eff;
-    `;
-
-    const wireframeText = document.createElement('span');
-    wireframeText.textContent = 'Показать сетку';
-
-    wireframeLabel.appendChild(wireframeCheckbox);
-    wireframeLabel.appendChild(wireframeText);
-
     loaderDiv.appendChild(title);
     loaderDiv.appendChild(fileInput);
     loaderDiv.appendChild(info);
-    loaderDiv.appendChild(wireframeLabel);
 
     this.uiContainer.appendChild(loaderDiv);
     this.fileInput = fileInput;
-    this.wireframeCheckbox = wireframeCheckbox;
-    this.wireframeLabel = wireframeLabel;
   }
 
   /**
-   * Скрывает интерфейс модулей
-   */
-  hideModuleUI() {
-    if (this.wireframeLabel) {
-      this.wireframeLabel.style.display = 'none';
-    }
-  }
-
-  /**
-   * Показывает интерфейс модулей
-   */
-  showModuleUI() {
-    if (this.wireframeLabel) {
-      this.wireframeLabel.style.display = 'flex';
-    }
-  }
-
-  /**
-   * Обновляет видимость интерфейса модулей в зависимости от наличия модели
+   * Обновляет видимость переключателя режимов в зависимости от наличия модели
    */
   updateModuleUIVisibility() {
-    if (this.viewer.hasModel()) {
-      this.showModuleUI();
-    } else {
-      this.hideModuleUI();
+    if (this.modeSwitcher) {
+      if (this.viewer.hasModel()) {
+        this.modeSwitcher.show();
+      } else {
+        this.modeSwitcher.hide();
+      }
     }
   }
 
@@ -266,10 +238,6 @@ class App {
     if (this.fileInput) {
       this.fileInput.addEventListener('change', (event) => this.onFileSelect(event));
     }
-
-    if (this.wireframeCheckbox) {
-      this.wireframeCheckbox.addEventListener('change', (event) => this.onWireframeToggle(event));
-    }
   }
 
   /**
@@ -312,21 +280,6 @@ class App {
       alert('Ошибка загрузки файла: ' + error.message);
     } finally {
       this.hideLoading();
-    }
-  }
-
-  /**
-   * Обработчик переключения сетки
-   * @param {Event} event - событие изменения чекбокса
-   */
-  onWireframeToggle(event) {
-    const activeModule = this.viewer.getActiveModule();
-    if (activeModule && activeModule.constructor.name === 'ViewModule') {
-      if (event.target.checked) {
-        activeModule.enableWireframe();
-      } else {
-        activeModule.disableWireframe();
-      }
     }
   }
 }
