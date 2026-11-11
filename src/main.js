@@ -106,13 +106,13 @@ class App {
       await this.viewer.loadModelFromUrl(this.modelUrl);
       console.log(`[DEBUG] Auto model loaded successfully for ${this.viewerId}`);
       this.updateModuleUIVisibility();
+      // Индикатор НЕ скрываем здесь - это делает ViewerManager после загрузки всех
     } catch (error) {
       console.error(`[DEBUG] Failed to auto load model for ${this.viewerId}:`, error);
       alert('Ошибка автоматической загрузки модели: ' + error.message);
       this.enableManualLoad();
       this.isAutoLoadMode = false;
-    } finally {
-      this.hideLoading();
+      this.hideLoading(); // При ошибке скрываем сразу
     }
   }
 
@@ -276,10 +276,10 @@ class App {
       await this.viewer.loadModelFromFile(file);
       console.log(`[DEBUG] Model loaded successfully for ${this.viewerId}`);
       this.updateModuleUIVisibility();
+      this.hideLoading(); // При ручной загрузке скрываем сразу
     } catch (error) {
       console.error(`[DEBUG] Failed to load model for ${this.viewerId}:`, error);
       alert('Ошибка загрузки файла: ' + error.message);
-    } finally {
       this.hideLoading();
     }
   }
@@ -312,6 +312,18 @@ class ViewerManager {
 
     await Promise.all(initPromises);
     console.log(`[DEBUG] All viewers initialized`);
+
+    // Скрываем все индикаторы загрузки только после завершения всех загрузок
+    this.hideAllLoadingIndicators();
+  }
+
+  /**
+   * Скрывает индикаторы загрузки всех вьюеров
+   */
+  hideAllLoadingIndicators() {
+    this.viewers.forEach(app => {
+      app.hideLoading();
+    });
   }
 }
 

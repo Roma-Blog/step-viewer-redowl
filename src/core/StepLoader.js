@@ -184,7 +184,7 @@ export class StepLoader {
    */
   createMaterial(meshData) {
     const material = new THREE.MeshStandardMaterial({
-      color: 0xaaaaaa,
+      color: 0xbcbcbc,
       roughness: 0.6,
       metalness: 0.1,
       flatShading: false

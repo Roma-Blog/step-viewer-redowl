@@ -25,6 +25,7 @@ export class DimensionsModule extends BaseModule {
     this.panelHeader = null;
     this.panelArrow = null;
     this.panelContent = null;
+    this.dimensionsInfoElement = null; // <-- ДОБАВЛЕНО: ссылка на конкретный элемент этого вьюера
     this.isPanelCollapsed = false;
 
     this.labelScreenSize = 32;
@@ -85,7 +86,6 @@ export class DimensionsModule extends BaseModule {
       overflow: hidden;
     `;
 
-    // Заголовок с кликабельной областью для сворачивания (Ваши правки применены)
     const header = document.createElement('div');
     header.style.cssText = `
       display: flex;
@@ -130,8 +130,11 @@ export class DimensionsModule extends BaseModule {
     `;
 
     const dimensionsInfo = document.createElement('div');
-    dimensionsInfo.id = 'dimensions-info';
+    // УБРАНО: dimensionsInfo.id = 'dimensions-info'; (чтобы не было конфликтов ID)
     dimensionsInfo.style.cssText = 'font-size: 14px; line-height: 1.6;';
+
+    // СОХРАНЯЕМ ПРЯМУЮ ССЫЛКУ на элемент этого конкретного вьюера
+    this.dimensionsInfoElement = dimensionsInfo;
 
     this.overallButton = document.createElement('button');
     this.overallButton.textContent = 'Показать общие габариты';
@@ -177,7 +180,6 @@ export class DimensionsModule extends BaseModule {
 
     this.viewer.uiContainer.appendChild(this.uiPanel);
 
-    // Инициализируем пустое состояние при создании
     this.showEmptyDimensions();
   }
 
@@ -206,9 +208,9 @@ export class DimensionsModule extends BaseModule {
    * Показывает прочерки, когда ничего не выбрано
    */
   showEmptyDimensions() {
-    const dimensionsInfo = document.getElementById('dimensions-info');
-    if (dimensionsInfo) {
-      dimensionsInfo.innerHTML = `
+    // ИСПОЛЬЗУЕМ прямую ссылку вместо document.getElementById
+    if (this.dimensionsInfoElement) {
+      this.dimensionsInfoElement.innerHTML = `
         <div style="color: #ff8c42;"><strong>Ширина (X):</strong> --- мм</div>
         <div style="color: #4a9eff;"><strong>Высота (Y):</strong> --- мм</div>
         <div style="color: #4caf50;"><strong>Глубина (Z):</strong> --- мм</div>
@@ -325,9 +327,9 @@ export class DimensionsModule extends BaseModule {
     const boundingBox = new THREE.Box3().setFromObject(mesh);
     const size = boundingBox.getSize(new THREE.Vector3());
 
-    const dimensionsInfo = document.getElementById('dimensions-info');
-    if (dimensionsInfo) {
-      dimensionsInfo.innerHTML = `
+    // ИСПОЛЬЗУЕМ прямую ссылку вместо document.getElementById
+    if (this.dimensionsInfoElement) {
+      this.dimensionsInfoElement.innerHTML = `
         <div style="color: #ff8c42;"><strong>Ширина (X):</strong> ${size.x.toFixed(2)} мм</div>
         <div style="color: #4a9eff;"><strong>Высота (Y):</strong> ${size.y.toFixed(2)} мм</div>
         <div style="color: #4caf50;"><strong>Глубина (Z):</strong> ${size.z.toFixed(2)} мм</div>
@@ -474,7 +476,7 @@ export class DimensionsModule extends BaseModule {
     } else {
       this.overallButton.textContent = 'Показать общие габариты';
       this.clearDimensionVisuals();
-      this.showEmptyDimensions(); // <-- Возвращаем прочерки при сбросе
+      this.showEmptyDimensions();
     }
   }
 
@@ -490,9 +492,9 @@ export class DimensionsModule extends BaseModule {
     const boundingBox = new THREE.Box3().setFromObject(model);
     const size = boundingBox.getSize(new THREE.Vector3());
 
-    const dimensionsInfo = document.getElementById('dimensions-info');
-    if (dimensionsInfo) {
-      dimensionsInfo.innerHTML = `
+    // ИСПОЛЬЗУЕМ прямую ссылку вместо document.getElementById
+    if (this.dimensionsInfoElement) {
+      this.dimensionsInfoElement.innerHTML = `
         <div style="margin-bottom: 10px; color: #fff; border-bottom: 1px solid #555; padding-bottom: 5px;"><strong>Общие габариты:</strong></div>
         <div style="color: #ff8c42;"><strong>Ширина (X):</strong> ${size.x.toFixed(2)} мм</div>
         <div style="color: #4a9eff;"><strong>Высота (Y):</strong> ${size.y.toFixed(2)} мм</div>
